@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# Line endings and file types.
+#
+# Everything is normalised to LF in the repository and checked out with the
+# platform's convention, so a file authored on Windows and one authored on
+# Linux produce no spurious diffs. The MSVC build is unaffected by either, and
+# C++ sources are UTF-8 (the build passes /utf-8 explicitly).
+# ---------------------------------------------------------------------------
+* text=auto eol=lf
+
+# Sources and build files
+*.cpp    text
+*.h      text
+*.hpp    text
+*.in     text
+*.txt    text
+*.md     text
+*.json   text
+*.iss    text
+*.py     text
+*.ps1    text
+*.bat    text
+*.cmake  text
+CMakeLists.txt text
+.gitignore     text
+.gitattributes text
+
+# Binary assets - never converted
+*.ico    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.bmp    binary
+*.tif    binary
+*.tiff   binary
+*.webp   binary
+*.svg    text
+
+# Git should not attempt to diff generated or vendored content
+*.qm     binary

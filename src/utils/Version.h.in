@@ -1,0 +1,13 @@
+// ---------------------------------------------------------------------------
+// OpenCardCanvas version information (generated from CMakeLists.txt).
+// Do not edit by hand - edit the project() version instead.
+// ---------------------------------------------------------------------------
+#pragma once
+
+#define OCC_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define OCC_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define OCC_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define OCC_VERSION_STRING "@PROJECT_VERSION@"
+
+// .occard project file format version understood by this build.
+#define OCC_PROJECT_FORMAT_VERSION 1

@@ -2,7 +2,7 @@
   tools/make_icon.ps1 - generates resources/win/app.ico used by the build and the
   installer.
 
-  The icon is drawn programmatically (no binary asset is checked in) so it is
+  The icon is generated from Logos/Cardinal ID Card Mascot Logo.png so it is
   reproducible: run this script to regenerate it after changing the artwork.
 
       powershell -NoProfile -ExecutionPolicy Bypass -File tools\make_icon.ps1
@@ -26,62 +26,26 @@ if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Forc
 
 $sizes = @(16, 24, 32, 48, 64, 128, 256)
 
+# The supplied logo is the single source for the application and Windows icon.
+$sourcePath = Join-Path $root 'Logos\Cardinal ID Card Mascot Logo.png'
+$source = [System.Drawing.Image]::FromFile($sourcePath)
+
 function New-IconBitmap([int] $size) {
     $bmp = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.Clear([System.Drawing.Color]::Transparent)
-
-    $s = [double]$size
-    $margin = [double]($s * 0.06)
-    $w = $s - 2 * $margin
-    $h = [double]($w * 0.64)
-    $x = $margin
-    $y = ($s - $h) / 2.0
-    $radius = [Math]::Max(1.0, $s * 0.07)
-    $d = $radius * 2
-
-    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $path.AddArc($x, $y, $d, $d, 180, 90)
-    $path.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
-    $path.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
-    $path.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
-    $path.CloseFigure()
-
-    $body = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 21, 52, 96))
-    $g.FillPath($body, $path)
-    $outline = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 92, 140, 214), [float][Math]::Max(0.75, $s * 0.035))
-    $g.DrawPath($outline, $path)
-
-    # Header band, clipped to the card outline.
-    $bandH = [Math]::Max(1.0, $h * 0.26)
-    $band = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 62, 128, 214))
-    $g.SetClip($path)
-    $g.FillRectangle($band, [float]$x, [float]$y, [float]$w, [float]$bandH)
-    $g.ResetClip()
-
-    if ($size -ge 32) {
-        $photo = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 224, 232, 244))
-        $pw = [Math]::Max(1.0, $w * 0.26)
-        $ph = [Math]::Max(1.0, $h * 0.30)
-        $px = $x + $w * 0.10
-        $py = $y + $h * 0.42
-        $g.FillRectangle($photo, [float]$px, [float]$py, [float]$pw, [float]$ph)
-
-        $line = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(230, 236, 243, 252))
-        $lx = $px + $pw * 1.35
-        $lw = ($x + $w) - $lx - $w * 0.10
-        $lh = [Math]::Max(0.8, $h * 0.075)
-        $g.FillRectangle($line, [float]$lx, [float]($py + $ph * 0.06), [float]$lw, [float]$lh)
-        $g.FillRectangle($line, [float]$lx, [float]($py + $ph * 0.50), [float]($lw * 0.72), [float]$lh)
-        $line.Dispose(); $photo.Dispose()
+    try {
+        $g.Clear([System.Drawing.Color]::Transparent)
+        $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+        $scale = [Math]::Min($size / [double]$source.Width, $size / [double]$source.Height)
+        $w = [float]($source.Width * $scale)
+        $h = [float]($source.Height * $scale)
+        $g.DrawImage($source, [float](($size - $w) / 2), [float](($size - $h) / 2), $w, $h)
+    } finally {
+        $g.Dispose()
     }
-
-    $band.Dispose(); $outline.Dispose(); $body.Dispose(); $path.Dispose()
-    $g.Dispose()
     return $bmp
 }
-
 
 function Get-IconEntryBytes([System.Drawing.Bitmap] $bmp) {
     $w = $bmp.Width
@@ -154,6 +118,7 @@ foreach ($img in $images) {
 foreach ($img in $images) { $bw.Write($img.Bytes, 0, $img.Bytes.Length) }
 $bw.Flush(); $bw.Dispose(); $fs.Dispose()
 
+$source.Dispose()
 $info = Get-Item $OutFile
 Write-Host ("Wrote {0} ({1} bytes, {2} resolutions: {3})" -f `
     $info.FullName, $info.Length, $images.Count, ($sizes -join ', '))

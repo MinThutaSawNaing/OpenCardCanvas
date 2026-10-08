@@ -13,6 +13,7 @@
 
 #include "printing/PrinterManager.h"
 #include "ui/MainWindow.h"
+#include "ui/IconFactory.h"
 #include "utils/AppPaths.h"
 #include "utils/Logger.h"
 #include "utils/Settings.h"
@@ -250,6 +251,7 @@ int main(int argc, char *argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argc, argv);
+    QApplication::setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
 
     QApplication::setOrganizationName(QStringLiteral("OpenCardCanvas"));
     QApplication::setOrganizationDomain(QStringLiteral("opencardcanvas.local"));

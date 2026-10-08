@@ -60,6 +60,7 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private:
+    friend class LayerTreeWidget;
     void onCanvasSelectionChanged();
     void onTreeSelectionChanged();
     void onItemChanged(QTreeWidgetItem *item, int column);

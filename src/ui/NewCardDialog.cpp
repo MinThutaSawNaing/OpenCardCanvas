@@ -24,7 +24,7 @@ NewCardDialog::NewCardDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(tr("New card"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("new")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     setModal(true);
     buildUi();
 }

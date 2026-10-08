@@ -35,7 +35,7 @@ PreferencesDialog::PreferencesDialog(PrinterManager *printers, QWidget *parent)
       m_printers(printers)
 {
     setWindowTitle(tr("Preferences"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("settings")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     setModal(true);
     buildUi();
     loadFromSettings();

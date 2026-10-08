@@ -21,18 +21,19 @@
 namespace occ {
 
 // ---------------------------------------------------------------------------
-// LayerTreeWidget - a QTreeWidget whose protected input handlers can be called
-// from the panel.
+// LayerTreeWidget routes viewport input to the panel and exposes base handlers
+// for the standard selection, rename and row-move behaviour.
 //
 // The panel needs to fall through to the standard behaviour (start a rename,
 // let the drag-and-drop machinery move the row) but it is not derived from the
 // view, and a protected virtual cannot be called on another object. Two small
-// forwarders solve that without duplicating any of Qt's behaviour.
+// forwarders solve that without duplicating any of Qt's behaviour. Overrides
+// are essential: events belong to the tree, not its parent LayersPanel.
 // ---------------------------------------------------------------------------
 class LayerTreeWidget : public QTreeWidget
 {
 public:
-    explicit LayerTreeWidget(QWidget *parent = nullptr) : QTreeWidget(parent) {}
+    explicit LayerTreeWidget(LayersPanel *panel) : QTreeWidget(panel), m_panel(panel) {}
 
     void forwardMousePress(QMouseEvent *event) { QTreeWidget::mousePressEvent(event); }
     void forwardMouseDoubleClick(QMouseEvent *event)
@@ -45,6 +46,13 @@ public:
     {
         return dropIndicatorPosition() == QAbstractItemView::OnItem;
     }
+protected:
+    void mousePressEvent(QMouseEvent *event) override { m_panel->mousePressEvent(event); }
+    void mouseDoubleClickEvent(QMouseEvent *event) override { m_panel->mouseDoubleClickEvent(event); }
+    void dropEvent(QDropEvent *event) override { m_panel->dropEvent(event); }
+    void contextMenuEvent(QContextMenuEvent *event) override { m_panel->contextMenuEvent(event); }
+private:
+    LayersPanel *m_panel;
 };
 
 namespace {
@@ -316,7 +324,8 @@ void LayersPanel::onItemChanged(QTreeWidgetItem *item, int column)
         if (m_canvas && m_canvas->undoStack()) {
             m_canvas->undoStack()->push(new RenameObjectCommand(
                 m_document, m_canvas->currentSide(), id, before, after));
-            item->setData(0, kRoleName, after);
+            // The command emits contentsChanged and refresh() destroys this
+            // item. The rebuilt row already contains the new name.
         }
         emit statusMessage(tr("Layer renamed to \"%1\".").arg(after));
     }
@@ -398,15 +407,20 @@ void LayersPanel::mousePressEvent(QMouseEvent *event)
 
 void LayersPanel::mouseDoubleClickEvent(QMouseEvent *event)
 {
+    if (event->button() != Qt::LeftButton) {
+        m_tree->forwardMouseDoubleClick(event);
+        return;
+    }
     if (QTreeWidgetItem *item = m_tree->itemAt(event->pos())) {
         const int column = m_tree->columnAt(event->pos().x());
-        const ObjectId id = item->data(0, kRoleId).value<ObjectId>();
         if (column == kColVisible) {
-            toggleVisibility(id);
+            // The first press already toggled this rail. A double-click must
+            // not immediately reverse that change.
+            event->accept();
             return;
         }
         if (column == kColLocked) {
-            toggleLock(id);
+            event->accept();
             return;
         }
         // On the name column the base class starts the in-place rename.
@@ -430,7 +444,11 @@ void LayersPanel::dropEvent(QDropEvent *event)
     const CardSideId side = m_canvas->currentSide();
     const QVector<ObjectId> before = m_document->side(side).objectIds();
 
+    // Qt changes row selection while moving items. Keep that transient state
+    // from clearing the canvas selection before the command rebuilds the list.
+    m_updating = true;
     m_tree->forwardDrop(event);
+    m_updating = false;
 
     // The tree now shows top-first order; the document wants bottom-first.
     const QVector<ObjectId> topFirst = idsTopFirst();

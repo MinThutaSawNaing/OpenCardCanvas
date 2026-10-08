@@ -11,8 +11,8 @@
 IDI_OCAPP_MAIN ICON "app.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION     1,0,0,0
- PRODUCTVERSION  1,0,0,0
+ FILEVERSION     1,0,1,0
+ PRODUCTVERSION  1,0,1,0
  FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
  FILEFLAGS       0
  FILEOS          VOS_NT_WINDOWS32
@@ -25,12 +25,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "OpenCardCanvas"
             VALUE "FileDescription",  "OpenCardCanvas - ID card design, personalization and printing"
-            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "FileVersion",      "1.0.1.0"
             VALUE "InternalName",     "OpenCardCanvas"
             VALUE "LegalCopyright",   "Copyright (C) OpenCardCanvas"
             VALUE "OriginalFilename", "OpenCardCanvas.exe"
             VALUE "ProductName",      "OpenCardCanvas"
-            VALUE "ProductVersion",   "1.0.0.0"
+            VALUE "ProductVersion",   "1.0.1.0"
             VALUE "Comments",         "Entrust/Datacard printer support uses the documented XPS Card Printer Driver interfaces."
         END
     END

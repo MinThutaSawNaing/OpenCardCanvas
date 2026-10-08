@@ -3,6 +3,11 @@
 Professional ID-card design, personalization, preview and printing software for
 Windows 10 and 11.
 
+**Download the latest Windows installer:**
+[OpenCardCanvas_Setup.exe](releases/OpenCardCanvas_Setup.exe)
+([SHA-256 checksum](releases/SHA256SUMS.txt)). Version 1.0.1 includes the
+Cardinal logo and the latest startup, dock-layout, resize-cursor and Layers fixes.
+
 OpenCardCanvas is a native C++/Qt 6 desktop application for designing ID cards
 (front and back), personalizing them from a CSV data set, previewing them exactly
 as they will print, and printing them on Entrust / Datacard XPS card printers or
@@ -100,10 +105,12 @@ cmake -S . -B build -G Ninja ^
 cmake --build build
 
 :: 3. Test
+set "PATH=C:\Qt\6.8.3\msvc2022_64\bin;%PATH%"
 ctest --test-dir build --output-on-failure
 
-:: 4. Run
-build\bin\OpenCardCanvas.exe
+:: 4. Deploy the runtime and run
+cmake --build build --target portable
+build\dist\OpenCardCanvas.exe
 ```
 
 Or use the helper script, which also produces the log used for troubleshooting:
@@ -111,6 +118,17 @@ Or use the helper script, which also produces the log used for troubleshooting:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\build.ps1 -Tests
 ```
+
+To build, test, deploy the runtime, and launch in one step:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\build.ps1 -Tests -Run
+```
+
+The helper discovers Visual Studio (including Build Tools), CMake, Ninja, and
+Qt MSVC x64 kits under `C:\Qt` or `D:\Qt`. For another Qt location, pass
+`-QtPrefix "<kit directory>"` or set `QTDIR`. The runnable portable application
+is written to `build\dist\OpenCardCanvas.exe`.
 
 ## 5. Documentation
 

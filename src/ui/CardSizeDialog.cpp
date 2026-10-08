@@ -94,7 +94,7 @@ CardSizeDialog::CardSizeDialog(const CardGeometry &current, const CardDocument *
       m_document(document)
 {
     setWindowTitle(tr("Change card size"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("settings")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     setModal(true);
     buildUi(current);
 }

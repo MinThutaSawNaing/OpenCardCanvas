@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/branding">
+        <file alias="logo.png">../Logos/Cardinal ID Card Mascot Logo.png</file>
+        <file alias="app.ico">win/app.ico</file>
+    </qresource>
+</RCC>

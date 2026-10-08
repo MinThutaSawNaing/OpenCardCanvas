@@ -76,7 +76,7 @@ PrinterSettingsDialog::PrinterSettingsDialog(PrinterManager *manager, Mode mode,
       m_mode(mode)
 {
     setWindowTitle(mode == Mode::Diagnostics ? tr("Printer diagnostics") : tr("Printer settings"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("printer")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     resize(940, 620);
     buildUi();
     refreshPrinters();

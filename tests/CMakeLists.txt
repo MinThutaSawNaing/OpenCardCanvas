@@ -36,3 +36,5 @@ occ_add_test(test_csv)           # CSV import: valid and malformed input
 occ_add_test(test_canvas)        # snapping, guides and view/geometry maths
 occ_add_test(test_printer)       # printer abstraction and the simulator backend
 occ_add_test(test_errors)        # invalid projects, missing files, bad input
+occ_add_test(test_layout)        # dock containment and scrolling at compact window sizes
+occ_add_test(test_layer_ui)      # resize cursor directions and layer input/undo

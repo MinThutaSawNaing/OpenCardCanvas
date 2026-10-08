@@ -181,6 +181,8 @@ ctest --test-dir build --output-on-failure
 | `test_canvas` | snapping, guides, zoom/geometry round trips |
 | `test_printer` | the printer abstraction and the simulator backend |
 | `test_errors` | invalid projects, missing files, unusable input |
+| `test_layout` | dock containment at compact/normal sizes, tabbed inspectors, scrollable panels, resetting floating docks |
+| `test_layer_ui` | resize cursor directions including rotation, visibility without changing selection, layer rename and context-menu stacking with undo/redo |
 
 After touching `QrEncoder`, regenerate the golden data:
 

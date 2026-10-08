@@ -47,7 +47,7 @@ DiagnosticsDialog::DiagnosticsDialog(const CardDocument *document, QWidget *pare
       m_document(document)
 {
     setWindowTitle(tr("Diagnostics"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("log")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     resize(760, 600);
     buildUi();
     refresh();

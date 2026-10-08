@@ -39,7 +39,7 @@ PrintPreviewDialog::PrintPreviewDialog(const CardDocument &document, const Reque
       m_request(request)
 {
     setWindowTitle(tr("Print preview"));
-    setWindowIcon(IconFactory::icon(QStringLiteral("preview")));
+    setWindowIcon(IconFactory::icon(QStringLiteral("logo")));
     resize(900, 640);
     buildUi();
     renderPreview();

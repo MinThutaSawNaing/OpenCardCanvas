@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(OpenCardCanvas
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "Professional ID card design, personalization, preview and printing software"
     LANGUAGES CXX)
 
@@ -181,6 +181,7 @@ set(OCC_UI
 # occcore - the application engine (static library)
 # ---------------------------------------------------------------------------
 add_library(occcore STATIC
+    resources/branding.qrc
     ${OCC_UTILS} ${OCC_CORE} ${OCC_CODES} ${OCC_RENDER} ${OCC_CANVAS}
     ${OCC_PROJECT} ${OCC_PERSONALIZATION} ${OCC_PRINTING} ${OCC_COMMANDS}
     ${OCC_UI}
@@ -247,6 +248,7 @@ if(OCC_QT_BIN_DIR)
             -DQT_BIN_DIR=${OCC_QT_BIN_DIR}
             -DAPP_DIR=$<TARGET_FILE_DIR:OpenCardCanvas>
             -DDIST_DIR=${CMAKE_BINARY_DIR}/dist
+            -DDEPLOY_CONFIG=$<CONFIG>
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/DeployQt.cmake"
         DEPENDS OpenCardCanvas
         COMMENT "Creating the portable distribution (windeployqt) in build/dist"

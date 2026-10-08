@@ -1133,11 +1133,11 @@ void CardCanvas::updateCursorFor(const QPointF &viewPos)
                                      + selected.first()->rotationDeg();
                 const double wrapped = std::fmod(std::fmod(angle, 180.0) + 180.0, 180.0);
                 if (wrapped > 22.5 && wrapped <= 67.5)
-                    setCursor(Qt::SizeFDiagCursor);
+                    setCursor(Qt::SizeBDiagCursor);
                 else if (wrapped > 67.5 && wrapped <= 112.5)
                     setCursor(Qt::SizeVerCursor);
                 else if (wrapped > 112.5 && wrapped <= 157.5)
-                    setCursor(Qt::SizeBDiagCursor);
+                    setCursor(Qt::SizeFDiagCursor);
                 else
                     setCursor(Qt::SizeHorCursor);
                 return;

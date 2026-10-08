@@ -43,10 +43,10 @@ are your data, not the application's.
 ## 3. Portable deployment
 
 `cmake --build build --target portable` runs `windeployqt`, after which
-`build/bin` is self-contained:
+`build/dist` is self-contained (the development executables stay in `build/bin`):
 
 ```
-build/bin/
+build/dist/
     OpenCardCanvas.exe
     Qt6Core.dll  Qt6Gui.dll  Qt6Widgets.dll  Qt6PrintSupport.dll  Qt6Svg.dll  ...
     platforms/       qwindows.dll
@@ -54,7 +54,6 @@ build/bin/
     iconengines/     qsvgicon.dll
     styles/          qmodernwindowsstyle.dll
     sqldrivers/      qsqlite.dll
-    translations/
 ```
 
 Copy that folder anywhere. The target machine needs the **Microsoft Visual C++

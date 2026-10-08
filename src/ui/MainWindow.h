@@ -65,7 +65,7 @@ private:
     // Dock arrangement version. Bump this whenever the default layout changes:
     // a saved state from an older version is then ignored instead of restoring
     // a layout that no longer matches (see restoreSession()).
-    static constexpr int kLayoutVersion = 2;
+    static constexpr int kLayoutVersion = 3;
 
     // --- construction -------------------------------------------------------
     void createDocument();

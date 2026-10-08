@@ -309,29 +309,50 @@ void MainWindow::createDocument()
 
 void MainWindow::applyDefaultDockLayout()
 {
-    // addDockWidget() STACKS a second dock on top of the first in the same area,
-    // which is what made the Align panel overlay the Properties panel. Splitting
-    // is what puts them side by side (or, here, one above the other).
+    // Clear previous splits, tabs and floating windows before rebuilding the
+    // layout. Merely adding an already floating dock does not reliably redock it.
+    for (QDockWidget *dock : { m_toolsDock, m_propertyDock, m_alignDock, m_layersDock,
+                               m_personalizationDock }) {
+        removeDockWidget(dock);
+        dock->setFloating(false);
+    }
     addDockWidget(Qt::LeftDockWidgetArea, m_toolsDock);
 
+    // Both inspectors are tall. Tabs give each the full available height rather
+    // than squeezing their controls into two undersized vertical regions.
     addDockWidget(Qt::RightDockWidgetArea, m_propertyDock);
-    splitDockWidget(m_propertyDock, m_alignDock, Qt::Vertical);
+    addDockWidget(Qt::RightDockWidgetArea, m_alignDock);
+    tabifyDockWidget(m_propertyDock, m_alignDock);
 
     addDockWidget(Qt::BottomDockWidgetArea, m_layersDock);
+    addDockWidget(Qt::BottomDockWidgetArea, m_personalizationDock);
     tabifyDockWidget(m_layersDock, m_personalizationDock);
+    for (QDockWidget *dock : { m_toolsDock, m_propertyDock, m_alignDock, m_layersDock,
+                               m_personalizationDock })
+        dock->show();
+    m_propertyDock->raise();
     m_layersDock->raise();
 
-    resizeDocks({ m_propertyDock, m_alignDock }, { 460, 240 }, Qt::Vertical);
     resizeDocks({ m_propertyDock }, { 340 }, Qt::Horizontal);
-    resizeDocks({ m_layersDock }, { 210 }, Qt::Vertical);
+    resizeDocks({ m_toolsDock }, { 180 }, Qt::Horizontal);
+    resizeDocks({ m_layersDock }, { 180 }, Qt::Vertical);
 }
 
 void MainWindow::createDocks()
 {
+    // Scroll instead of letting a panel's minimum height force the main window
+    // off screen. Horizontal scrolling also keeps controls reachable at high DPI.
+    const auto scrollable = [](QWidget *panel) {
+        auto *scroll = new QScrollArea;
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidget(panel);
+        return scroll;
+    };
     m_toolsPanel = new ToolsPanel(this);
     m_toolsDock = new QDockWidget(tr("Tools"), this);
     m_toolsDock->setObjectName(QStringLiteral("ToolsDock"));
-    m_toolsDock->setWidget(m_toolsPanel);
+    m_toolsDock->setWidget(scrollable(m_toolsPanel));
     m_toolsDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     m_propertyPanel = new PropertyPanel(this);
@@ -343,7 +364,7 @@ void MainWindow::createDocks()
     m_alignPanel = new AlignPanel(this);
     m_alignDock = new QDockWidget(tr("Align and arrange"), this);
     m_alignDock->setObjectName(QStringLiteral("AlignDock"));
-    m_alignDock->setWidget(m_alignPanel);
+    m_alignDock->setWidget(scrollable(m_alignPanel));
     m_alignDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     m_layersPanel = new LayersPanel(this);
@@ -354,7 +375,7 @@ void MainWindow::createDocks()
     m_personalizationPanel = new PersonalizationPanel(this);
     m_personalizationDock = new QDockWidget(tr("Personalization"), this);
     m_personalizationDock->setObjectName(QStringLiteral("PersonalizationDock"));
-    m_personalizationDock->setWidget(m_personalizationPanel);
+    m_personalizationDock->setWidget(scrollable(m_personalizationPanel));
 
     applyDefaultDockLayout();
 
@@ -551,6 +572,7 @@ void MainWindow::createActions()
     m_actSnapGrid = make(QStringLiteral("snap"), tr("Snap to the grid"), QKeySequence());
     m_actSnapGrid->setCheckable(true);
     m_actResetLayout = make(QStringLiteral("refresh"), tr("&Reset layout"), QKeySequence());
+    m_actResetLayout->setObjectName(QStringLiteral("ResetLayoutAction"));
 
     m_actBringFront = make(QStringLiteral("bring_front"), tr("Bring to &Front"),
                            QKeySequence(QStringLiteral("Ctrl+Shift+]")));

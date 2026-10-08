@@ -17,7 +17,7 @@
 
 ```powershell
 python -m pip install aqtinstall
-python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 ^
+python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 `
         -m qtimageformats -O C:\Qt
 ```
 
@@ -25,6 +25,22 @@ That produces `C:\Qt\6.8.3\msvc2022_64`. `qtimageformats` is what adds TIFF/TGA/
 image support; without it TIFF images cannot be imported.
 
 ## 2. Configure
+
+### Recommended: build and run from PowerShell
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\build.ps1 -Tests -Run
+```
+
+The helper finds Visual Studio / Build Tools through `vswhere` and uses CMake
+and Ninja from `PATH` or the Visual Studio CMake tools component. It discovers
+Qt MSVC x64 kits under `C:\Qt` and `D:\Qt`; use `-QtPrefix "C:\path\to\kit"`
+or `QTDIR` for a custom location. No developer prompt is required. Output is
+streamed to the console and saved in `build\build.log`.
+
+`-Portable` produces `build\dist` without launching it. `-Run` also deploys
+the Qt runtime, then starts `build\dist\OpenCardCanvas.exe` after a successful
+build (and successful tests when `-Tests` is supplied).
 
 The project finds Qt through, in order of precedence:
 
@@ -97,7 +113,7 @@ build agent with no desktop session.
 cmake --build build --target portable
 ```
 
-This runs `windeployqt` so `build/bin` becomes a self-contained **portable release
+This runs `windeployqt` so `build/dist` becomes a self-contained **portable release
 directory**: copy it to any Windows machine with the Visual C++ 2015–2022 x64
 runtime and it will start.
 

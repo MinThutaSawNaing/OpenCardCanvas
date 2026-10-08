@@ -13,10 +13,12 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName        "OpenCardCanvas"
-#define AppVersion     "1.0.0"
+#define AppVersion     "1.0.1"
 #define AppPublisher   "OpenCardCanvas"
 #define AppExeName     "OpenCardCanvas.exe"
+#ifndef SourceDir
 #define SourceDir      "..\build\dist"
+#endif
 
 [Setup]
 AppId={{8B2E5C1A-4F3D-4A6E-9C21-7D5B3E9A1C44}
@@ -29,6 +31,7 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName} {#AppVersion}
+SetupIconFile=..\resources\win\app.ico
 OutputDir=Output
 OutputBaseFilename=OpenCardCanvas_Setup
 Compression=lzma2/max
@@ -64,6 +67,8 @@ Source: "{#SourceDir}\styles\*";           DestDir: "{app}\styles"; Flags: ignor
 Source: "{#SourceDir}\sqldrivers\*";       DestDir: "{app}\sqldrivers"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "{#SourceDir}\generic\*";          DestDir: "{app}\generic"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "{#SourceDir}\translations\*";     DestDir: "{app}\translations"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "{#SourceDir}\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "{#SourceDir}\tls\*";              DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Documentation shipped with the product
 Source: "..\README.md";                    DestDir: "{app}\docs"; Flags: ignoreversion
@@ -100,6 +105,8 @@ Type: filesandordirs; Name: "{app}\styles"
 Type: filesandordirs; Name: "{app}\sqldrivers"
 Type: filesandordirs; Name: "{app}\generic"
 Type: filesandordirs; Name: "{app}\translations"
+Type: filesandordirs; Name: "{app}\networkinformation"
+Type: filesandordirs; Name: "{app}\tls"
 Type: filesandordirs; Name: "{app}\docs"
 Type: filesandordirs; Name: "{app}\templates"
 

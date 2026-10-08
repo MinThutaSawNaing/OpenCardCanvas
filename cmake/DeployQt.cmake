@@ -35,12 +35,16 @@ file(COPY "${_src_exe}" DESTINATION "${DIST_DIR}")
 set(_exe "${DIST_DIR}/OpenCardCanvas.exe")
 
 message(STATUS "Deploying Qt runtime with ${WINDEPLOYQT_EXECUTABLE}")
+set(_deploy_mode --release)
+if(DEPLOY_CONFIG STREQUAL "Debug")
+    set(_deploy_mode --debug)
+endif()
 # windeployqt inspects the executable and pulls in exactly the modules and
 # plugins that are needed, so no explicit module flags are passed here (several
 # that older versions accepted no longer exist, e.g. --print-support).
 execute_process(
     COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-            --release
+            ${_deploy_mode}
             --no-translations
             --no-compiler-runtime
             --dir "${DIST_DIR}"

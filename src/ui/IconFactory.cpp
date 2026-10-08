@@ -10,6 +10,13 @@
 #include <QPolygonF>
 #include <QtMath>
 
+// Explicit initialization keeps the resource object linked from occcore's
+// static archive, including in tests that use IconFactory without main.cpp.
+static void initializeBranding()
+{
+    Q_INIT_RESOURCE(branding);
+}
+
 namespace occ {
 namespace {
 
@@ -511,6 +518,12 @@ const char *const kNames[] = {
 QPixmap IconFactory::pixmap(const QString &name, int sizePx)
 {
     const int size = qBound(8, sizePx, 256);
+    if (name == QLatin1String("logo")) {
+        static const bool initialized = [] { initializeBranding(); return true; }();
+        Q_UNUSED(initialized);
+        return QPixmap(QStringLiteral(":/branding/logo.png"))
+            .scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
     QPixmap pm(size, size);
     pm.fill(Qt::transparent);
 
@@ -543,6 +556,11 @@ QString *cacheKey()
 
 QIcon IconFactory::icon(const QString &name)
 {
+    if (name == QLatin1String("logo")) {
+        static const bool initialized = [] { initializeBranding(); return true; }();
+        Q_UNUSED(initialized);
+        return QIcon(QStringLiteral(":/branding/app.ico"));
+    }
     // The cached pixmaps carry the palette colour they were drawn with, so the
     // key includes it: switching to a dark theme must not leave black glyphs on
     // a dark toolbar.

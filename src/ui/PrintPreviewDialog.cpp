@@ -90,6 +90,36 @@ void PrintPreviewDialog::buildUi()
     auto *side = new QGroupBox(tr("Print settings"), this);
     auto *sideLayout = new QVBoxLayout(side);
 
+    sideLayout->addWidget(new QLabel(tr("Printer"), side));
+    m_printerChoice = new QComboBox(side);
+    m_printerChoice->setObjectName(QStringLiteral("printerChoice"));
+    m_printerChoice->addItem(tr("Simulator (no hardware)"), QString());
+    if (m_printers) {
+        if (m_printers->printers().isEmpty())
+            m_printers->refresh();
+        for (const auto &printer : m_printers->printers())
+            m_printerChoice->addItem(printer.name, printer.name);
+    }
+    int selected = m_printerChoice->findData(m_request.printerName);
+    if (selected < 0) {
+        m_printerChoice->addItem(tr("%1 (not available)").arg(m_request.printerName),
+                                 m_request.printerName);
+        selected = m_printerChoice->count() - 1;
+    }
+    m_printerChoice->setCurrentIndex(selected);
+    sideLayout->addWidget(m_printerChoice);
+    connect(m_printerChoice, &QComboBox::currentIndexChanged, this, [this] {
+        m_request.printerName = m_printerChoice->currentData().toString();
+        updateSummary();
+    });
+    auto *savePrinter = new QPushButton(tr("Save printer for future printing"), side);
+    savePrinter->setObjectName(QStringLiteral("savePrinter"));
+    sideLayout->addWidget(savePrinter);
+    connect(savePrinter, &QPushButton::clicked, this, [this] {
+        AppSettings::instance().setDefaultPrinter(m_request.printerName);
+        AppSettings::instance().sync();
+    });
+
     auto *copiesRow = new QHBoxLayout();
     copiesRow->addWidget(new QLabel(tr("Copies"), side));
     m_copies = new QSpinBox(side);
@@ -131,6 +161,12 @@ void PrintPreviewDialog::buildUi()
         // The dialog writes the choice through AppSettings, so re-reading it is
         // what keeps the summary and the request in step with reality.
         m_request.printerName = AppSettings::instance().defaultPrinter();
+        int index = m_printerChoice->findData(m_request.printerName);
+        if (index < 0) {
+            m_printerChoice->addItem(m_request.printerName, m_request.printerName);
+            index = m_printerChoice->count() - 1;
+        }
+        m_printerChoice->setCurrentIndex(index);
         updateSummary();
     });
 
@@ -254,19 +290,21 @@ void PrintPreviewDialog::updateSummary()
                           : m_request.printerName);
 
     if (!simulator && m_printers) {
-        if (CardPrinterPtr printer = m_printers->printer(m_request.printerName)) {
-            const PrinterIdentity identity = printer->identity();
+        bool found = false;
+        for (const PrinterIdentity &identity : m_printers->printers()) {
+            if (identity.name != m_request.printerName)
+                continue;
+            found = true;
             lines << tr("Driver: %1")
                          .arg(identity.driverName.isEmpty() ? tr("not reported")
                                                             : identity.driverName);
             lines << tr("Backend: %1")
-                         .arg(printer->isRealHardware()
-                                  ? tr("real card printer")
-                                  : tr("simulation only - no card will be printed"));
-        } else {
-            lines << tr("Driver: the printer could not be opened (%1)")
-                         .arg(m_printers->lastError());
+                         .arg(identity.backend == PrinterBackendKind::EntrustXps
+                                  ? tr("real card printer") : tr("Windows printer driver"));
+            break;
         }
+        if (!found)
+            lines << tr("Saved printer is not currently installed. Select an available printer before printing.");
     } else if (simulator) {
         lines << tr("Backend: simulation only - no card will be printed");
     }

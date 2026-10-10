@@ -38,3 +38,5 @@ occ_add_test(test_printer)       # printer abstraction and the simulator backend
 occ_add_test(test_errors)        # invalid projects, missing files, bad input
 occ_add_test(test_layout)        # dock containment and scrolling at compact window sizes
 occ_add_test(test_layer_ui)      # resize cursor directions and layer input/undo
+occ_add_test(test_property_colors) # modal colour picking, cancellation and undo
+occ_add_test(test_printer_ui)    # saved printer selection and preview

@@ -76,6 +76,7 @@ private:
     QSlider     *m_zoom = nullptr;
     QLabel      *m_zoomLabel = nullptr;
     QSpinBox    *m_copies = nullptr;
+    QComboBox   *m_printerChoice = nullptr;
     QLabel      *m_frontSideLabel = nullptr;
     QLabel      *m_backSideLabel = nullptr;
     QLabel      *m_summary = nullptr;

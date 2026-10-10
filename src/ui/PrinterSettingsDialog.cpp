@@ -3,6 +3,7 @@
 #include "core/CardGeometry.h"
 #include "printing/ICardPrinter.h"
 #include "printing/PrinterManager.h"
+#include "printing/ResponsivePrint.h"
 #include "ui/IconFactory.h"
 #include "utils/AppPaths.h"
 #include "utils/BidiClient.h"
@@ -147,9 +148,19 @@ void PrinterSettingsDialog::buildUi()
     layout->addLayout(buttons);
 
     auto *bottom = new QHBoxLayout();
-    auto *hint = new QLabel(tr("Selecting a printer makes it the default for printing."), this);
+    auto *hint = new QLabel(tr("Choose a printer, then save it for future printing. This does not change the Windows default printer."), this);
     hint->setWordWrap(true);
     bottom->addWidget(hint, 1);
+    auto *save = new QPushButton(tr("Save printer"), this);
+    save->setObjectName(QStringLiteral("savePrinter"));
+    bottom->addWidget(save);
+    connect(save, &QPushButton::clicked, this, [this, hint] {
+        if (m_table->currentRow() < 0)
+            return;
+        AppSettings::instance().setDefaultPrinter(selectedPrinter());
+        AppSettings::instance().sync();
+        hint->setText(tr("Printer saved for future printing."));
+    });
     auto *close = new QPushButton(tr("Close"), this);
     bottom->addWidget(close);
     layout->addLayout(bottom);
@@ -275,10 +286,7 @@ void PrinterSettingsDialog::updateSelection()
     if (m_table->currentRow() < 0)
         return;
 
-    // Selecting a printer here is what makes it the default: the dialog is the
-    // only place a user chooses a device, so it must not be a decision that is
-    // thrown away when the window closes.
-    AppSettings::instance().setDefaultPrinter(selectedPrinter());
+    // Browsing or refreshing the list must not overwrite a saved preference.
 }
 
 void PrinterSettingsDialog::appendDiagnostics(const QString &title, const QString &text)
@@ -465,7 +473,10 @@ void PrinterSettingsDialog::runPrinterTest()
     if (answer != QMessageBox::Yes)
         return;
 
-    const TestPageResult result = printTestPage(*m_manager, name, 300);
+    const TestPageResult result = runResponsivePrint(this, [name] {
+        PrinterManager manager;
+        return printTestPage(manager, name, 300);
+    });
     QStringList lines;
     lines << tr("Printer: %1").arg(name.isEmpty() ? tr(kSimulatorLabel) : name);
     if (result.ok && result.simulated) {
@@ -474,7 +485,7 @@ void PrinterSettingsDialog::runPrinterTest()
     } else if (result.ok) {
         lines << tr("The printer accepted the test page.");
     } else {
-        lines << tr("The test page was not printed: %1").arg(result.error);
+        lines << tr("Test page printing was not confirmed: %1").arg(result.error);
     }
     if (!result.detail.isEmpty())
         lines << tr("Technical detail: %1").arg(result.detail);
@@ -485,7 +496,7 @@ void PrinterSettingsDialog::runPrinterTest()
                                  tr("The card was simulated, not printed."));
     } else if (!result.ok) {
         QMessageBox::warning(this, tr("Printer test"),
-                             tr("The test page was not printed.\n\n%1").arg(result.error));
+                             tr("Test page printing was not confirmed.\n\n%1").arg(result.error));
     }
 }
 

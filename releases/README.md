@@ -1,8 +1,12 @@
 # Windows installer
 
-`OpenCardCanvas_Setup.exe` installs OpenCardCanvas 1.0.1 for Windows 10/11 x64.
-It includes the supplied Cardinal logo, startup/toolchain fixes, scrollable and
-tabbed dock panels, corrected resize cursors, and Layers input/rename fixes.
+`OpenCardCanvas_Setup.exe` installs OpenCardCanvas 1.0.2 for Windows 10/11 x64.
+It includes print responsiveness and progress fixes, working color pickers,
+and explicit printer selection and saving independent of the Windows default.
+
+To upgrade, run this installer over the existing installation; do not uninstall
+first. Setup remembers the installation location and scope. Save your work and
+close the application before upgrading. User projects and settings are preserved.
 
 Download the executable using GitHub's **Download raw file** button, then run it.
 The installer is unsigned; Windows SmartScreen may show a reputation warning.

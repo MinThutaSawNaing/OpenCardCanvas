@@ -18,6 +18,16 @@
 4. Finish. OpenCardCanvas is created in the Start Menu, along with a shortcut to
    the printer setup guide.
 
+### Upgrading an existing installation
+
+Run the new installer without uninstalling the old version. Setup reuses the
+existing installation folder, installation scope (current user or all users),
+and shortcut choices. Save your work and close OpenCardCanvas before upgrading;
+if it is running, Setup will offer to close it before replacing program files.
+Projects, templates, auto-saves and settings stay in the user profile and are
+not deleted by the upgrade. This is an installer-based upgrade, not an automatic
+Internet update service.
+
 ### Silent install
 
 ```bat
@@ -91,7 +101,11 @@ lets you rehearse a print workflow without hardware.
 4. **File → Save As** (Ctrl+Shift+S) to write a `.occard` project.
 5. **File → Export → PNG (300 dpi)** to check the output pixel size.
 6. **Print → Print Preview** to see exactly what will be sent to the printer.
-7. **Print → Printer Settings → Refresh** to find your printer.
+7. Choose your printer in **Print → Print Preview**, then click **Save printer
+   for future printing**. Alternatively use **Print → Printer Settings → Refresh**,
+   select a queue, and click **Save printer**. This selection is independent of
+   the Windows default printer. An unavailable saved queue is retained rather
+   than silently replaced with another printer or the simulator.
 
 If anything misbehaves, **Help → Diagnostics** shows the log tail, the paths and
 a project validation report, and can open the log folder for you.

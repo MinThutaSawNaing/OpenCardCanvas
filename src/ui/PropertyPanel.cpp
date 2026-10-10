@@ -95,17 +95,27 @@ public:
     // Called with the new colour after the user confirmed one.
     std::function<void(const QColor &)> onColorChosen;
     // Title of the picker dialog, e.g. "Text colour".
-    void setPickTitle(const QString &title) { m_pickTitle = title; }
+    void setPickTitle(const QString &title)
+    {
+        m_pickTitle = title;
+        setAccessibleName(title);
+    }
 
 private:
     void chooseColor()
     {
-        QColorDialog dialog(m_color, this);
+        QColorDialog dialog(this);
+        // Native pickers differ in alpha support and modal focus handling.
+        // Use the Qt picker consistently so transparent fills remain editable.
+        dialog.setOption(QColorDialog::DontUseNativeDialog, true);
         dialog.setOption(QColorDialog::ShowAlphaChannel, true);
+        // Setting the initial colour before enabling alpha silently makes a
+        // transparent colour opaque in Qt's widget picker.
+        dialog.setCurrentColor(m_color);
         dialog.setWindowTitle(m_pickTitle.isEmpty() ? text() : m_pickTitle);
         if (dialog.exec() != QDialog::Accepted)
             return;
-        const QColor chosen = dialog.currentColor();
+        const QColor chosen = dialog.selectedColor();
         if (!chosen.isValid() || chosen == m_color)
             return;
         setColor(chosen);

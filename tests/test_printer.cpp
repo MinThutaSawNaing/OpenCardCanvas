@@ -10,6 +10,8 @@
 #include "printing/ICardPrinter.h"
 #include "printing/PrinterManager.h"
 #include "printing/SimulatorPrinter.h"
+#include "printing/ResponsivePrint.h"
+#include "printing/EntrustXpsPrinter.h"
 #include "utils/GdiPrintSurface.h"
 
 #include <QDir>
@@ -31,6 +33,11 @@ private slots:
     void managerRefreshDoesNotCrash();
     void printerEnumerationDoesNotCrash();
     void statusMaskDecodingIsSane();
+    void cancelKeepsGuiResponsiveUntilWorkerFinishes();
+    void testPageWorkRunsOffGuiThread();
+    void missingSpoolJobIdIsNotSuccess();
+    void spoolStatusFlagsAreNotPhysicalCompletion();
+    void entrustTerminalStatusParsing();
 };
 
 void TestPrinter::simulatorIsAlwaysAvailable()
@@ -178,6 +185,78 @@ void TestPrinter::statusMaskDecodingIsSane()
 
     const QString attributes = GdiPrintSurface::describePrinterAttributes(0);
     QVERIFY(!attributes.isNull());
+}
+
+void TestPrinter::cancelKeepsGuiResponsiveUntilWorkerFinishes()
+{
+    std::atomic<bool> done{false}, cancel{false};
+    QProgressDialog progress(QStringLiteral("Printing"), QStringLiteral("Stop"), 0, 1);
+    progress.setAutoReset(false);
+    progress.setAutoClose(false);
+    int heartbeat = 0;
+    QTimer timer;
+    connect(&timer, &QTimer::timeout, this, [&] { ++heartbeat; });
+    timer.start(5);
+    QTimer::singleShot(20, &progress, [&] {
+        progress.hide();
+        QMetaObject::invokeMethod(&progress, "canceled", Qt::DirectConnection);
+    });
+    std::thread worker([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        done = true;
+    });
+    waitForPrintWorker(progress, done, cancel);
+    worker.join();
+    QVERIFY(cancel.load());
+    QVERIFY(done.load());
+    QVERIFY2(heartbeat > 10, "Cancel blocked GUI events while the driver was still running");
+}
+
+void TestPrinter::testPageWorkRunsOffGuiThread()
+{
+    const auto guiThread = std::this_thread::get_id();
+    int heartbeat = 0;
+    QTimer timer;
+    connect(&timer, &QTimer::timeout, this, [&] { ++heartbeat; });
+    timer.start(5);
+    const bool workerThread = runResponsivePrint(nullptr, [guiThread] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return std::this_thread::get_id() != guiThread;
+    });
+    QVERIFY(workerThread);
+    QVERIFY(heartbeat > 5);
+}
+
+void TestPrinter::missingSpoolJobIdIsNotSuccess()
+{
+    QString error;
+    QVERIFY(!GdiPrintSurface::waitUntilJobSpooled(QString(), 0, 1, &error));
+    QVERIFY(!error.isEmpty());
+}
+
+void TestPrinter::entrustTerminalStatusParsing()
+{
+    for (const auto &entry : {std::pair<const char *, JobState>{"JobSucceeded", JobState::Succeeded},
+                             {"JobFailed", JobState::Failed},
+                             {"JobCancelled", JobState::Cancelled},
+                             {"CardNotRetrieved", JobState::CardNotRetrieved}}) {
+        JobState state;
+        QVERIFY(EntrustXpsPrinter::parseJobStatusXml(
+            QStringLiteral("<JobStatus><JobState>%1</JobState></JobStatus>")
+                .arg(QString::fromLatin1(entry.first)), &state, nullptr, nullptr));
+        QCOMPARE(state, entry.second);
+    }
+}
+
+void TestPrinter::spoolStatusFlagsAreNotPhysicalCompletion()
+{
+    using State = GdiPrintSurface::SpoolState;
+    QCOMPARE(GdiPrintSurface::spoolState(JOB_STATUS_SPOOLING | JOB_STATUS_PRINTING), State::Pending);
+    QCOMPARE(GdiPrintSurface::spoolState(JOB_STATUS_COMPLETE | JOB_STATUS_PRINTED), State::Accepted);
+    // Printing means all data was accepted, not that a physical card finished.
+    QCOMPARE(GdiPrintSurface::spoolState(JOB_STATUS_PRINTING), State::Accepted);
+    QCOMPARE(GdiPrintSurface::spoolState(JOB_STATUS_COMPLETE | JOB_STATUS_ERROR), State::Failed);
+    QCOMPARE(GdiPrintSurface::spoolState(JOB_STATUS_DELETING), State::Failed);
 }
 
 QTEST_MAIN(TestPrinter)

@@ -5,8 +5,10 @@ Windows 10 and 11.
 
 **Download the latest Windows installer:**
 [OpenCardCanvas_Setup.exe](releases/OpenCardCanvas_Setup.exe)
-([SHA-256 checksum](releases/SHA256SUMS.txt)). Version 1.0.1 includes the
-Cardinal logo and the latest startup, dock-layout, resize-cursor and Layers fixes.
+([SHA-256 checksum](releases/SHA256SUMS.txt)). Version 1.0.2 includes printing
+responsiveness/status fixes, color-picker fixes, and saved printer selection.
+Run the installer over your existing installation to upgrade without uninstalling;
+your projects and settings are preserved.
 
 OpenCardCanvas is a native C++/Qt 6 desktop application for designing ID cards
 (front and back), personalizing them from a CSV data set, previewing them exactly

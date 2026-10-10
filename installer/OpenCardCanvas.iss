@@ -13,7 +13,7 @@
 ; ---------------------------------------------------------------------------
 
 #define AppName        "OpenCardCanvas"
-#define AppVersion     "1.0.1"
+#define AppVersion     "1.0.2"
 #define AppPublisher   "OpenCardCanvas"
 #define AppExeName     "OpenCardCanvas.exe"
 #ifndef SourceDir
@@ -42,6 +42,12 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+UsePreviousAppDir=yes
+UsePreviousTasks=yes
+UsePreviousPrivileges=yes
+CloseApplications=yes
+CloseApplicationsFilter=OpenCardCanvas.exe
+RestartApplications=no
 LicenseFile=..\LICENSE
 InfoAfterFile=..\docs\INSTALLATION.md
 VersionInfoVersion={#AppVersion}

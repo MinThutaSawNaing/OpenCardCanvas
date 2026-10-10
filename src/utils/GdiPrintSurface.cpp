@@ -562,7 +562,11 @@ bool GdiPrintSurface::waitUntilJobSpooled(const QString &printerName, unsigned l
     if (error)
         error->clear();
     if (jobId == 0)
-        return true;
+    {
+        if (error)
+            *error = QStringLiteral("The spooler did not return a print job id.");
+        return false;
+    }
 
     const int budgetMs = timeoutMs > 0 ? timeoutMs : 60000;
 
@@ -592,12 +596,21 @@ bool GdiPrintSurface::waitUntilJobSpooled(const QString &printerName, unsigned l
                               reinterpret_cast<LPBYTE>(buffer.data()), needed, &returned)) {
                     const JOB_INFO_2W *info =
                         reinterpret_cast<const JOB_INFO_2W *>(buffer.constData());
-                    if (info->Status == JOB_STATUS_COMPLETE) {
+                    if (spoolState(info->Status) == SpoolState::Failed) {
+                        failure = QStringLiteral("The spooler failed or cancelled print job %1 (status %2).")
+                                      .arg(jobId).arg(info->Status);
+                        break;
+                    }
+                    if (spoolState(info->Status) == SpoolState::Accepted) {
                         finished = true;
                         break;
                     }
+                } else {
+                    failure = QStringLiteral("Could not read spooler job %1: %2.")
+                                  .arg(jobId).arg(win32Message(::GetLastError()));
+                    break;
                 }
-            } else if (needed == 0) {
+            } else if (lastError == ERROR_INVALID_PARAMETER) {
                 // The job no longer exists: it has left the spooler queue.
                 finished = true;
                 break;

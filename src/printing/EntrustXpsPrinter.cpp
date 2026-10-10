@@ -741,9 +741,8 @@ int EntrustXpsPrinter::printerJobIdFromStatusXml(const QString &xml) const
 // \Printer.JobStatus:Read every two seconds until a terminal state, reporting
 // progress on the way.
 //
-// Note: the SDK additionally supplies the claimed PrinterJobID as request input
-// (JOB_STATUS_XML); the frozen BidiClient exposes a schema GET only, so the poll
-// queries by schema. Confirm against hardware.
+// Scope the GET to our claimed PrinterJobID; an unscoped query can return a
+// previous card's success and must never be used as confirmation of this card.
 // --------------------------------------------------------------------------
 void EntrustXpsPrinter::pollForCompletion(const PrintJob &job, PrintResult &result)
 {
@@ -756,8 +755,12 @@ void EntrustXpsPrinter::pollForCompletion(const PrintJob &job, PrintResult &resu
     JobState state = JobState::NotAvailable;
     for (;;) {
         QString xml;
-        if (m_bidi.query(BidiClient::schemaJobStatus(), &xml, nullptr)) {
-            if (!parseJobStatusXml(xml, &state, nullptr, nullptr))
+        int observedWindowsId = 0;
+        if (m_bidi.query(BidiClient::schemaJobStatus(), &xml, nullptr,
+                         BidiClient::jobStatusXml(result.printerJobId))) {
+            if (!parseJobStatusXml(xml, &state, &observedWindowsId, nullptr)
+                || (observedWindowsId > 0 && result.windowsJobId != 0
+                    && static_cast<unsigned long>(observedWindowsId) != result.windowsJobId))
                 state = JobState::Unknown;
         } else {
             state = JobState::Unknown;
@@ -843,16 +846,19 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
     {
         const QString payload = BidiClient::startJobXml(job.hopperId, job.cardEjectSide);
         QString setError;
-        if (!m_bidi.set(BidiClient::schemaStartJob(), payload, &setError)) {
+        QString response;
+        if (!m_bidi.set(BidiClient::schemaStartJob(), payload, &setError, &response)) {
             result.error =
                 QStringLiteral("The printer would not start the card job: %1").arg(setError);
             result.technicalDetail = m_bidi.lastTechnicalDetail();
             return finish();
         }
+        result.printerJobId = printerJobIdFromStatusXml(response);
     }
     {
         QString xml;
-        if (m_bidi.query(BidiClient::schemaPrintMessages(), &xml, nullptr))
+        if (result.printerJobId <= 0
+            && m_bidi.query(BidiClient::schemaPrintMessages(), &xml, nullptr))
             result.printerJobId = printerJobIdFromStatusXml(xml);
     }
 
@@ -873,6 +879,11 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
         result.technicalDetail = technical;
         if (result.printerJobId > 0)
             cancelJob(result.printerJobId);
+        else {
+            QString cleanupError;
+            if (!m_bidi.send(BidiClient::schemaEndJob(), &cleanupError))
+                result.technicalDetail += QStringLiteral("; closing untracked StartJob failed: %1").arg(cleanupError);
+        }
         return finish();
     }
 
@@ -883,6 +894,13 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
         surface.abort();
         if (result.printerJobId > 0)
             cancelJob(result.printerJobId);
+        else {
+            // No safe target for Cancel is known. Close our outstanding
+            // StartJob rather than leaking the claim or cancelling another job.
+            QString cleanupError;
+            if (!m_bidi.send(BidiClient::schemaEndJob(), &cleanupError))
+                result.technicalDetail += QStringLiteral("; closing untracked StartJob failed: %1").arg(cleanupError);
+        }
         return finish();
     };
 
@@ -894,7 +912,7 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
             return abortWith(error, QString());
     }
     if (job.backEnabled) {
-        if (!surface.resetDevice(true, &error))
+        if (!surface.resetDevice(job.landscape, &error))
             return abortWith(error, QString());
         if (!surface.drawPage(job.backImage, job.backDpi, &error, &technical))
             return abortWith(error, technical);
@@ -909,16 +927,25 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
     result.windowsJobId = windowsJobId;
 
     // 3. Wait until the spooler holds all the data, then close the card job.
-    (void)GdiPrintSurface::waitUntilJobSpooled(m_printerName, windowsJobId,
-                                               job.completionTimeoutSeconds * 1000, nullptr);
-    m_bidi.send(BidiClient::schemaEndJob(), nullptr);
+    if (job.progress)
+        job.progress(result.printerJobId, JobState::Active, QStringLiteral("Waiting for Windows to spool the card..."));
+    if (!GdiPrintSurface::waitUntilJobSpooled(m_printerName, windowsJobId,
+                                             job.completionTimeoutSeconds * 1000, &error))
+        return abortWith(error, QStringLiteral("WaitUntilJobSpooled failed"));
+    if (!m_bidi.send(BidiClient::schemaEndJob(), &error))
+        return abortWith(QStringLiteral("The printer did not accept EndJob: %1").arg(error),
+                         m_bidi.lastTechnicalDetail());
 
     // 4. Poll for completion.
-    if (job.waitForCompletion) {
+    if (job.waitForCompletion && result.printerJobId > 0) {
         pollForCompletion(job, result);
     } else {
         result.finalJobState = JobState::Unknown;
         result.completed = false;
+        if (result.printerJobId <= 0) {
+            result.error = QStringLiteral("The card job was submitted, but the driver did not return a card job id; completion could not be verified.");
+            result.technicalDetail = QStringLiteral("StartJob response and PrintMessages omitted PrinterJobID; unscoped completion polling was not attempted");
+        }
     }
 
     // Always try to capture the device's own error description.
@@ -944,7 +971,7 @@ PrintResult EntrustXpsPrinter::printJob(const PrintJob &job)
                 "The card job was sent to the printer but completion was not verified "
                 "(waiting for completion is disabled).");
         } else if (result.error.isEmpty()) {
-            result.error = QStringLiteral("The card was not printed: %1.")
+            result.error = QStringLiteral("Printing was not confirmed: %1.")
                                .arg(jobStateToString(result.finalJobState));
             if (result.errorCode != 0) {
                 result.error += QStringLiteral(" The printer reported error %1: %2")

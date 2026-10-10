@@ -288,7 +288,8 @@ bool WindowsPrinterBackend::print(const PrintJob &job)
 
     m_lastPrintSucceeded = true;
     if (job.progress)
-        job.progress(0, JobState::Succeeded, QStringLiteral("Sent to %1").arg(m_name));
+        job.progress(0, JobState::Unknown,
+                     QStringLiteral("Submitted to %1; physical printing was not verified").arg(m_name));
     return true;
 }
 

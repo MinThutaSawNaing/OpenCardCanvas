@@ -1,1 +1,1 @@
-995252e317fdaed5ffb61661e02e5ffad9b9c9fbaf123a5f6d37d80d26fa48ae  OpenCardCanvas_Setup.exe
+e87aceafaa89ee27974b51c99519b4e93c6178c3679385862ab792a5f1786e75  OpenCardCanvas_Setup.exe

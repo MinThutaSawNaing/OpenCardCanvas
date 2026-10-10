@@ -6,6 +6,7 @@
 #include "core/CardSide.h"
 #include "core/ImageObject.h"
 #include "printing/PrinterManager.h"
+#include "printing/ResponsivePrint.h"
 #include "project/AssetStore.h"
 #include "project/AutoSave.h"
 #include "project/ProjectSerializer.h"
@@ -92,11 +93,13 @@ struct BatchPrintState
     std::atomic<int>  total{ 0 };
     std::atomic<int>  processed{ 0 };
     std::atomic<int>  printed{ 0 };
+    std::atomic<int>  submitted{ 0 };
     std::atomic<int>  simulated{ 0 };
     std::atomic<int>  failed{ 0 };
 
     std::mutex  mutex;
     QStringList messages;      // one line per problem, guarded by mutex
+    QString liveProgress;
 
     void note(const QString &message)
     {
@@ -156,6 +159,10 @@ static void batchPrintWorker(BatchPrintState *state,
     const auto printOne = [&](QVector<RenderContext::Warning> *warnings,
                              const QVector<int> &recordList, int copies) {
         PrintJob job;
+        job.progress = [state](int, JobState, const QString &text) {
+            const std::lock_guard<std::mutex> lock(state->mutex);
+            state->liveProgress = text;
+        };
         job.printerName = printerName;
         job.documentName = QObject::tr("OpenCardCanvas card");
         job.copies = copies;
@@ -204,9 +211,11 @@ static void batchPrintWorker(BatchPrintState *state,
         // The distinction that must never be lost: a simulated job did not put
         // ink on a card.
         if (printer->backend() == PrinterBackendKind::Simulator)
-            state->simulated.fetch_add(1);
+            state->simulated.fetch_add(copies);
+        else if (printer->backend() == PrinterBackendKind::Windows)
+            state->submitted.fetch_add(1);
         else
-            state->printed.fetch_add(1);
+            state->printed.fetch_add(copies);
     };
 
     if (request.records.isEmpty()) {
@@ -1853,10 +1862,11 @@ void MainWindow::printTestCard()
     if (answer != QMessageBox::Yes)
         return;
 
-    QApplication::setOverrideCursor(Qt::WaitCursor);
     const PrinterSettingsDialog::TestPageResult result =
-        PrinterSettingsDialog::printTestPage(*m_printers, printer, 300);
-    QApplication::restoreOverrideCursor();
+        runResponsivePrint(this, [printer] {
+            PrinterManager manager;
+            return PrinterSettingsDialog::printTestPage(manager, printer, 300);
+        });
 
     if (result.ok && result.simulated) {
         QMessageBox::information(this, tr("Print test card"),
@@ -1869,7 +1879,7 @@ void MainWindow::printTestCard()
         setStatus(tr("Test page sent to the printer."));
     } else {
         QMessageBox::warning(this, tr("Print test card"),
-                             tr("The test card was not printed.\n\n%1").arg(result.error));
+                             tr("Test card printing was not confirmed.\n\n%1").arg(result.error));
         logFailure(tr("The test card could not be printed."), result.detail);
         setStatus(tr("Print test card failed."));
     }
@@ -1970,26 +1980,32 @@ void MainWindow::runPrintJob(const PrintPreviewDialog::Request &request)
     progress.setAutoReset(false);
     progress.setValue(0);
 
-    std::thread worker(batchPrintWorker, &state, documentBytes, request.printerName,
-                       m_document.geometry().renderDpi(), request,
-                       m_personalizationPanel->data(), m_personalizationPanel->mapping());
+    const int dpi = m_document.geometry().renderDpi();
+    const CsvTable table = m_personalizationPanel->data();
+    const MappingSet mapping = m_personalizationPanel->mapping();
+    std::thread worker([&, dpi, table, mapping] {
+        try {
+            batchPrintWorker(&state, documentBytes, request.printerName, dpi, request,
+                             table, mapping);
+        } catch (const std::exception &error) {
+            state.note(tr("Printing stopped unexpectedly: %1").arg(QString::fromUtf8(error.what())));
+            state.failed.fetch_add(1);
+        } catch (...) {
+            state.note(tr("Printing stopped unexpectedly."));
+            state.failed.fetch_add(1);
+        }
+        state.done = true;
+    });
 
-    QTimer poll;
-    connect(&poll, &QTimer::timeout, this, [&] {
+    waitForPrintWorker(progress, state.done, state.cancel, [&] {
         progress.setValue(qMin(state.processed.load(), state.total.load()));
-        if (state.done.load())
-            progress.accept();
+        const std::lock_guard<std::mutex> lock(state.mutex);
+        if (!state.cancel.load() && !state.liveProgress.isEmpty())
+            progress.setLabelText(state.liveProgress);
     });
-    poll.start(120);
-    connect(&progress, &QProgressDialog::canceled, this, [&state, &progress] {
-        state.cancel = true;
-        progress.setLabelText(tr("Finishing the current card..."));
-    });
-
-    if (progress.exec() == QDialog::Rejected)
-        state.cancel = true;
+    // The event loop above exits only after the worker is done: join cannot
+    // block the GUI, even when the user pressed Cancel or closed the dialog.
     worker.join();
-    poll.stop();
 
     QStringList messages;
     {
@@ -2000,8 +2016,11 @@ void MainWindow::runPrintJob(const PrintPreviewDialog::Request &request)
     const int printed = state.printed.load();
     const int simulated = state.simulated.load();
     const int failed = state.failed.load();
+    const int submitted = state.submitted.load();
 
     QStringList summary;
+    if (submitted > 0)
+        summary << tr("%1 job(s) submitted to Windows; physical printing was not verified.").arg(submitted);
     if (printed > 0)
         summary << tr("%1 card(s) printed.").arg(printed);
     if (simulated > 0)
@@ -2015,7 +2034,7 @@ void MainWindow::runPrintJob(const PrintPreviewDialog::Request &request)
     const QString text = summary.isEmpty() ? tr("Nothing was printed.") : summary.join(
                                                  QLatin1Char('\n'));
 
-    if (failed > 0 || (printed == 0 && simulated == 0)) {
+    if (failed > 0 || (printed == 0 && simulated == 0 && submitted == 0)) {
         QMessageBox::warning(this, tr("Print"), text + QStringLiteral("\n\n")
                                                    + messages.join(QLatin1Char('\n')));
         setStatus(tr("Printing finished with problems."));
@@ -2025,7 +2044,9 @@ void MainWindow::runPrintJob(const PrintPreviewDialog::Request &request)
                                              ? QString()
                                              : QStringLiteral("\n\n")
                                                    + messages.join(QLatin1Char('\n'))));
-        setStatus(printed > 0 ? tr("Printing finished.") : tr("Cards were simulated."));
+        setStatus(printed > 0 ? tr("Printing finished.")
+                             : submitted > 0 ? tr("Submitted to Windows; printing not verified.")
+                                             : tr("Cards were simulated."));
     }
 
     for (const QString &message : messages)

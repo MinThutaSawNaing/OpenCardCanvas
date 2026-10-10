@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(OpenCardCanvas
-    VERSION 1.0.1
+    VERSION 1.0.2
     DESCRIPTION "Professional ID card design, personalization, preview and printing software"
     LANGUAGES CXX)
 

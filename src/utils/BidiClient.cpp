@@ -231,7 +231,8 @@ bool BidiClient::isOpen() const
 // --------------------------------------------------------------------------
 // query - BIDI_ACTION_GET
 // --------------------------------------------------------------------------
-bool BidiClient::query(const QString &schema, QString *xml, QString *error)
+bool BidiClient::query(const QString &schema, QString *xml, QString *error,
+                       const QString &inputXml)
 {
     if (xml)
         xml->clear();
@@ -270,6 +271,18 @@ bool BidiClient::query(const QString &schema, QString *xml, QString *error)
         return false;
     }
 
+    if (!inputXml.isEmpty()) {
+        hr = request->SetInputData(BIDI_BLOB,
+                                  reinterpret_cast<const BYTE *>(inputXml.utf16()),
+                                  UINT(inputXml.size() * sizeof(char16_t)));
+        if (FAILED(hr)) {
+            m_lastError = QStringLiteral("The printer status request could not be filled in.");
+            m_lastTechnical = QStringLiteral("IBidiRequest::SetInputData: %1").arg(describeHresult(hr));
+            if (error)
+                *error = m_lastError;
+            return false;
+        }
+    }
     hr = m_impl->spl->SendRecv(BIDI_ACTION_GET, request.Get());
     if (FAILED(hr)) {
         m_lastError = QStringLiteral("The printer did not answer the status request.");
@@ -323,8 +336,11 @@ bool BidiClient::query(const QString &schema, QString *xml, QString *error)
 // --------------------------------------------------------------------------
 // set - BIDI_ACTION_SET with an XML payload (StartJob / Action)
 // --------------------------------------------------------------------------
-bool BidiClient::set(const QString &schema, const QString &inputXml, QString *error)
+bool BidiClient::set(const QString &schema, const QString &inputXml, QString *error,
+                     QString *outputXml)
 {
+    if (outputXml)
+        outputXml->clear();
     m_lastError.clear();
     m_lastTechnical.clear();
 
@@ -385,6 +401,17 @@ bool BidiClient::set(const QString &schema, const QString &inputXml, QString *er
     m_lastTechnical = technical;
     if (!ok && error)
         *error = m_lastError;
+    // Some driver versions return the claimed PrinterJobID in StartJob's
+    // response, others expose it through PrintMessages. Output is optional:
+    // absence of a response must not turn an accepted SET into a failure.
+    if (ok && outputXml) {
+        ComMem mem;
+        DWORD dataType = 0;
+        ULONG dataSize = 0;
+        if (SUCCEEDED(request->GetOutputData(0, mem.schemaSlot(), &dataType,
+                                             mem.dataSlot(), &dataSize)))
+            *outputXml = utf16FromBlob(mem.data(), dataSize);
+    }
     return ok;
 }
 

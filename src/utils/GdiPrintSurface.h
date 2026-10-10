@@ -7,6 +7,7 @@
 #include <QStringList>
 
 #include <windows.h>
+#include <winspool.h>
 
 // ---------------------------------------------------------------------------
 // GdiPrintSurface - prints a rendered card image to a Windows printer DC.
@@ -73,6 +74,13 @@ public:
     // printer is told the job is complete.
     static bool waitUntilJobSpooled(const QString &printerName, unsigned long jobId,
                                     int timeoutMs, QString *error = nullptr);
+    enum class SpoolState { Pending, Accepted, Failed };
+    static SpoolState spoolState(DWORD status)
+    {
+        if (status & (JOB_STATUS_ERROR | JOB_STATUS_DELETING | JOB_STATUS_DELETED))
+            return SpoolState::Failed;
+        return status & JOB_STATUS_SPOOLING ? SpoolState::Pending : SpoolState::Accepted;
+    }
 
     // Enumerates the printers installed for the current user, using the same
     // PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS flags as the SDK samples.

@@ -424,8 +424,13 @@ void PreferencesDialog::loadFromSettings()
 
     // Printing
     const int printerIndex = m_defaultPrinter->findData(settings.defaultPrinter());
-    if (printerIndex >= 0)
+    if (printerIndex >= 0) {
         m_defaultPrinter->setCurrentIndex(printerIndex);
+    } else if (!settings.defaultPrinter().isEmpty()) {
+        m_defaultPrinter->addItem(tr("%1 (not available)").arg(settings.defaultPrinter()),
+                                  settings.defaultPrinter());
+        m_defaultPrinter->setCurrentIndex(m_defaultPrinter->count() - 1);
+    }
     m_confirmBeforePrint->setChecked(settings.confirmBeforePrint());
     if (m_printers && m_printers->printers().isEmpty()) {
         m_printerHint->setText(tr("No card printer was found on this computer. The simulator "

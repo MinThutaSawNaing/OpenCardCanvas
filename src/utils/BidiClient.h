@@ -45,10 +45,12 @@ public:
     bool isOpen() const;
 
     // BIDI_ACTION_GET with the given schema. `xml` receives the reply.
-    bool query(const QString &schema, QString *xml, QString *error = nullptr);
+    bool query(const QString &schema, QString *xml, QString *error = nullptr,
+               const QString &inputXml = QString());
 
     // BIDI_ACTION_SET with XML payload (StartJob / EndJob / Action).
-    bool set(const QString &schema, const QString &inputXml, QString *error = nullptr);
+    bool set(const QString &schema, const QString &inputXml, QString *error = nullptr,
+             QString *outputXml = nullptr);
 
     // SendRecv with no payload (used by EndJob).
     bool send(const QString &schema, QString *error = nullptr);
